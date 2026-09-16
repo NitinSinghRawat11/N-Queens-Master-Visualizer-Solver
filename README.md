@@ -26,6 +26,7 @@ function backtrack(row) {
 
 Project Structure
 
-├── index.html        # Complete self-contained web app (UI, CSS, and JS engine)
+├── index.html        # Complete self-contained web app (UI, CSS, and JS engine) 
+
 └── README.md         # Project overview and instructions
 
