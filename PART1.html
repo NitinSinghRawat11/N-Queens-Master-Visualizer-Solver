@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-Queens Visualizer & Solver</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        @keyframes popIn {
+            0% {
+                transform: scale(0) rotate(-15deg);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.1) rotate(5deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        .animate-queen {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        @keyframes pulseGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(245, 158, 11, 0.8);
+            }
+        }
+        
+        .active-cell-glow {
+            animation: pulseGlow 1.2s infinite;
+        }
+        
+         ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+         ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        
+         ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        
+         ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+
+<body class="bg-[#07090e] text-slate-100 min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+    <header class="w-full max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between border-b border-slate-800/80 gap-4 bg-[#0b0f19]/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-600 to-yellow-400 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-bold text-xl">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                    N-Queens <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">Master Engine</span>
+                </h1>
+                <p class="text-xs text-slate-400">Backtracking Algorithm & Graphical Solution Explorer</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 bg-[#111827] p-1.5 rounded-xl border border-slate-800/80 shadow-inner">
+            <button onclick="switchTab('solver')" id="tab-solver" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-amber-500 text-slate-950 shadow-md">
+                <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i> Live Visualizer
+            </button>
+            <button onclick="switchTab('gallery')" id="tab-gallery" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
+                <i class="fa-solid fa-chess-board mr-1.5"></i> All Solutions Gallery
+            </button>
+            <button onclick="switchTab('guide')" id="tab-guide" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
+                <i class="fa-solid fa-book-open mr-1.5"></i> Step-by-Step Guide
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-7xl mx-auto px-6 py-8 flex-grow flex flex-col">
+
+        <div id="view-solver" class="space-y-6">
+            <div class="bg-[#0b0f19] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col lg:flex-row items-center justify-between gap-6">
+
+                <div class="flex flex-wrap items-center gap-6 w-full lg:w-auto">
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-400/90 mb-2 uppercase tracking-wider">Board Dimension (N)</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="range" id="nRange" min="4" max="10" value="8" oninput="updateN(this.value)" class="w-36 accent-amber-500 cursor-pointer">
+                            <span id="nValDisplay" class="w-8 text-center font-bold text-lg text-amber-400 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">8</span>
+                        </div>
+                    </div>
+
+                    <div class="h-10 w-px bg-slate-800 hidden sm:block"></div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-400/90 mb-2 uppercase tracking-wider">Simulation Speed</label>
+                        <select id="speedSelect" class="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 font-medium">
+                            <option value="400">Relaxed (0.4s)</option>
+                            <option value="150" selected>Normal (0.15s)</option>
+                            <option value="40">Turbo (0.04s)</option>
+                            <option value="5">Instantaneous</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+                    <button onclick="startSimulation()" id="btn-start" class="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-amber-500/25 flex items-center gap-2.5">
+                        <i class="fa-solid fa-play"></i> Run Simulation
+                    </button>
+                    <button onclick="pauseSimulation()" id="btn-pause" class="hidden px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-orange-600/25 flex items-center gap-2.5">
+                        <i class="fa-solid fa-pause"></i> Pause
+                    </button>
+                    <button onclick="stepForward()" id="btn-step" class="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl text-sm transition border border-slate-800 flex items-center gap-2 font-medium" title="Step Forward">
+                        <i class="fa-solid fa-forward-step text-amber-400"></i> Step
+                    </button>
+                    <button onclick="resetSolver()" class="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl text-sm transition border border-slate-800 flex items-center gap-2 font-medium">
+                        <i class="fa-solid fa-rotate-right text-slate-400"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-[#0b0f19] border border-slate-800/80 rounded-2xl p-5 flex items-center space-x-4 shadow-md">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20 text-xl font-bold">
+                        <i class="fa-solid fa-radar"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 font-medium">Status / Action</div>
+                        <div id="statusText" class="text-sm font-bold text-amber-300 truncate max-w-[180px]" title="Ready to Solve">Ready to Solve</div>
+                    </div>
+                </div>
+
+                <div class="bg-[#0b0f19] border border-slate-800/80 rounded-2xl p-5 flex items-center space-x-4 shadow-md">
+                    <div class="w-12 h-12 rounded-xl bg-yellow-500/10 text-yellow-400 flex items-center justify-center border border-yellow-500/20 text-xl font-bold">
+                        <i class="fa-solid fa-shoe-prints"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 font-medium">Backtrack Steps</div>
+                        <div id="stepCount" class="text-sm font-bold text-slate-100">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-[#0b0f19] border border-slate-800/80 rounded-2xl p-5 flex items-center space-x-4 shadow-md">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 text-xl font-bold">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 font-medium">Solutions Discovered</div>
+                        <div id="solutionsFoundCount" class="text-sm font-bold text-slate-100">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-[#0b0f19] border border-slate-800/80 rounded-2xl p-5 flex items-center space-x-4 shadow-md">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20 text-xl font-bold">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 font-medium">Total Possible (N=...)</div>
+                        <div id="totalPossibleCount" class="text-sm font-bold text-slate-100">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#0b0f19] border border-slate-800/80 rounded-3xl p-8 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden min-h-[460px]">
+                <div class="absolute top-4 left-6 text-xs text-slate-500 font-semibold flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span> Graphical Board Stage
+                </div>
+                <div id="liveBoardWrapper" class="flex items-center justify-center w-full overflow-x-auto p-4 my-2">
+                </div>
+
+            </div>
+        </div>
+
+        <div id="view-gallery" class="hidden space-y-6">
+            <div class="bg-[#0b0f19] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chess-board text-amber-500"></i> Distinct Solutions Explorer
+                    </h2>
+                    <p class="text-xs text-slate-400">Instantly inspect every single valid arrangement for the selected board size N.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <label class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Select N:</label>
+                    <select id="galleryNSelect" onchange="loadGallery(this.value)" class="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 font-medium">
+                        <option value="4">4x4 (2 solutions)</option>
+                        <option value="5">5x5 (10 solutions)</option>
+                        <option value="6">6x6 (4 solutions)</option>
+                        <option value="7">7x7 (40 solutions)</option>
+                        <option value="8" selected>8x8 (92 solutions)</option>
+                        <option value="9">9x9 (352 solutions)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="gallerySummary" class="text-sm font-semibold text-amber-400 px-2"></div>
+
+            <div id="galleryContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            </div>
+        </div>
+
+        <div id="view-guide" class="hidden space-y-6 max-w-4xl mx-auto w-full">
+            <div class="bg-[#0b0f19] border border-slate-800/80 rounded-3xl p-8 shadow-2xl space-y-8">
+
+                <div class="border-b border-slate-800 pb-6">
+                    <div class="inline-block px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold mb-3 border border-amber-500/20">DOCUMENTATION & TUTORIAL</div>
+                    <h2 class="text-2xl font-black text-white tracking-tight">How the N-Queens Visualizer Works & How to Run It</h2>
+                    <p class="text-sm text-slate-400 mt-2">A complete breakdown of the backtracking algorithm, graphical design, and deployment instructions.</p>
+                </div>
+
+                <div class="space-y-6 text-sm text-slate-300 leading-relaxed">
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-1"></i> What is the N-Queens Puzzle?
+                        </h3>
+                        <p class="text-slate-300">
+                            The N-Queens puzzle is the problem of placing <code class="bg-slate-900 px-2 py-0.5 rounded text-amber-300 font-mono">N</code> chess queens on an <code class="bg-slate-900 px-2 py-0.5 rounded text-amber-300 font-mono">N × N</code>                            chessboard so that no two queens threaten each other. This means no two queens can share the same row, column, or diagonal.
+                        </p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-2"></i> The Backtracking Algorithm Engine
+                        </h3>
+                        <p class="text-slate-300">
+                            Instead of trying all possible combinations blindly ($N^N$), our engine uses recursive backtracking with instant branch pruning:
+                        </p>
+                        <ul class="list-disc pl-6 space-y-2 text-slate-400">
+                            <li><strong class="text-slate-200">Row by Row Placement:</strong> Places one queen per row, starting from row 0.</li>
+                            <li><strong class="text-slate-200">O(1) Conflict Tracking:</strong> Uses Hash Sets for columns (<code class="font-mono text-amber-300">cols</code>), positive diagonals (<code class="font-mono text-amber-300">row - col</code>),
+                                and negative diagonals (<code class="font-mono text-amber-300">row + col</code>).</li>
+                            <li><strong class="text-slate-200">Pruning & Backtracking:</strong> If a conflict occurs, the algorithm instantly abandons that branch, removes the queen, and tries the next column.</li>
+                        </ul>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-3"></i> How to Run the Application
+                        </h3>
+                        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3 font-mono text-xs text-slate-300">
+                            <div class="text-amber-400 font-bold mb-1">Method: Single-File Execution</div>
+                            <p class="font-sans text-slate-400">Because this is a fully self-contained web app:</p>
+                            <ol class="list-decimal pl-5 space-y-1.5 font-sans text-slate-300">
+                                <li>Save the complete code into a file named <code class="bg-slate-900 px-1.5 py-0.5 rounded text-amber-300">index.html</code>.</li>
+                                <li>Double-click the file to open it instantly in any modern web browser (Chrome, Safari, Firefox, Edge). No servers or installations required!</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-7xl mx-auto px-6 py-6 border-t border-slate-800/80 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div>N-Queens Graphical Master Visualizer &bull; Built with Tailwind CSS & JavaScript Engine</div>
+        <div class="text-amber-500/80 font-medium">Theme: Amber & Obsidian Royal Gold</div>
+    </footer>
+
+    <script>
+        let n = 8;
+        let activeTab = 'solver';
+        let solutions = [];
+        let steps = [];
+        let currentStepIndex = 0;
+        let isRunning = false;
+        let timer = null;
+        let stepCount = 0;
+
+        function switchTab(tab) {
+            activeTab = tab;
+            pauseSimulation();
+
+            ['solver', 'gallery', 'guide'].forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    view.classList.remove('hidden');
+                    btn.className = 'px-4 py-2 text-xs font-semibold rounded-lg transition-all bg-amber-500 text-slate-950 shadow-md';
+                } else {
+                    view.classList.add('hidden');
+                    btn.className = 'px-4 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white';
+                }
+            });
+
+            if (tab === 'solver') {
+                renderLiveBoard(createEmptyBoard(n), -1, -1);
+            } else if (tab === 'gallery') {
+                loadGallery(document.getElementById('galleryNSelect').value);
+            }
+        }
+
+        function createEmptyBoard(size) {
+            return Array.from({
+                length: size
+            }, () => Array(size).fill('.'));
+        }
+
+        function updateN(val) {
+            n = parseInt(val, 10);
+            document.getElementById('nValDisplay').textContent = n;
+            resetSolver();
+        }
+
+        function generateBacktrackingSteps(boardSize) {
+            const allSteps = [];
+            const board = createEmptyBoard(boardSize);
+            const cols = new Set();
+            const diag1 = new Set();
+            const diag2 = new Set();
+
+            function backtrack(row) {
+                if (row === boardSize) {
+                    allSteps.push({
+                        type: 'solution',
+                        board: board.map(r => [...r]),
+                        msg: `Discovered solution #${allSteps.filter(s => s.type === 'solution').length + 1}!`
+                    });
+                    return;
+                }
+
+                for (let col = 0; col < boardSize; col++) {
+                    allSteps.push({
+                        type: 'try',
+                        row: row,
+                        col: col,
+                        board: board.map(r => [...r]),
+                        msg: `Inspecting row ${row + 1}, column ${col + 1}`
+                    });
+
+                    if (cols.has(col) || diag1.has(row - col) || diag2.has(row + col)) {
+                        allSteps.push({
+                            type: 'conflict',
+                            row: row,
+                            col: col,
+                            board: board.map(r => [...r]),
+                            msg: `Conflict at (${row + 1}, ${col + 1}). Pruned.`
+                        });
+                        continue;
+                    }
+
+                    cols.add(col);
+                    diag1.add(row - col);
+                    diag2.add(row + col);
+                    board[row][col] = 'Q';
+
+                    allSteps.push({
+                        type: 'place',
+                        row: row,
+                        col: col,
+                        board: board.map(r => [...r]),
+                        msg: `Placed crown at (${row + 1}, ${col + 1})`
+                    });
+
+                    backtrack(row + 1);
+
+
+                    cols.delete(col);
+                    diag1.delete(row - col);
+                    diag2.delete(row + col);
+                    board[row][col] = '.';
+
+                    allSteps.push({
+                        type: 'remove',
+                        row: row,
+                        col: col,
+                        board: board.map(r => [...r]),
+                        msg: `Backtracking from (${row + 1}, ${col + 1})`
+                    });
+                }
+            }
+
+            backtrack(0);
+            return allSteps;
+        }
+
+        function solveNQueensSilent(boardSize) {
+            const results = [];
+            const cols = new Set();
+            const diag1 = new Set();
+            const diag2 = new Set();
+            const board = createEmptyBoard(boardSize);
+
+            function search(row) {
+                if (row === boardSize) {
+                    results.push(board.map(r => r.join('')));
+                    return;
+                }
+                for (let col = 0; col < boardSize; col++) {
+                    if (cols.has(col) || diag1.has(row - col) || diag2.has(row + col)) continue;
+                    cols.add(col);
+                    diag1.add(row - col);
+                    diag2.add(row + col);
+                    board[row][col] = 'Q';
+                    search(row + 1);
+                    cols.delete(col);
+                    diag1.delete(row - col);
+                    diag2.delete(row + col);
+                    board[row][col] = '.';
+                }
+            }
+            search(0);
+            return results;
+        }
+
+        function resetSolver() {
+            pauseSimulation();
+            steps = generateBacktrackingSteps(n);
+            currentStepIndex = 0;
+            stepCount = 0;
+            solutions = solveNQueensSilent(n);
+
+            document.getElementById('stepCount').textContent = '0';
+            document.getElementById('solutionsFoundCount').textContent = `0 / ${solutions.length}`;
+            document.getElementById('totalPossibleCount').textContent = solutions.length;
+            document.getElementById('statusText').textContent = 'Ready to Solve';
+
+            renderLiveBoard(createEmptyBoard(n), -1, -1);
+        }
+
+        function renderLiveBoard(boardData, activeRow, activeCol) {
+            const wrapper = document.getElementById('liveBoardWrapper');
+            wrapper.innerHTML = '';
+
+            const currentN = boardData.length;
+            const cellSize = currentN <= 6 ? '56px' : currentN <= 8 ? '44px' : '36px';
+            const fontSize = currentN <= 6 ? '26px' : currentN <= 8 ? '20px' : '16px';
+
+            const grid = document.createElement('div');
+            grid.className = 'grid rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-500/30';
+            grid.style.gridTemplateColumns = `repeat(${currentN}, ${cellSize})`;
+            grid.style.gridTemplateRows = `repeat(${currentN}, ${cellSize})`;
+
+            for (let r = 0; r < currentN; r++) {
+                for (let c = 0; c < currentN; c++) {
+                    const cell = document.createElement('div');
+                    const isLight = (r + c) % 2 === 0;
+
+                    cell.className = `flex items-center justify-center transition-all duration-150 relative ${
+                        isLight ? 'bg-[#1e293b] text-amber-200' : 'bg-[#0f172a] text-slate-400'
+                    }`;
+
+                    if (r === activeRow && c === activeCol) {
+                        cell.classList.add('active-cell-glow', 'bg-amber-500/30', 'border-2', 'border-amber-400', 'z-10');
+                    }
+
+                    const coord = document.createElement('span');
+                    coord.className = 'absolute bottom-0.5 right-1 text-[9px] opacity-20 font-mono pointer-events-none';
+                    coord.textContent = `${r},${c}`;
+                    cell.appendChild(coord);
+
+                    if (boardData[r][c] === 'Q') {
+                        const queenIcon = document.createElement('div');
+                        queenIcon.className = 'animate-queen text-amber-400 drop-shadow-[0_4px_8px_rgba(245,158,11,0.5)] flex items-center justify-center';
+                        queenIcon.style.fontSize = fontSize;
+                        queenIcon.innerHTML = '<i class="fa-solid fa-chess-queen"></i>';
+                        cell.appendChild(queenIcon);
+                    }
+                    grid.appendChild(cell);
+                }
+            }
+            wrapper.appendChild(grid);
+        }
+
+        function stepForward() {
+            if (currentStepIndex >= steps.length) {
+                pauseSimulation();
+                document.getElementById('statusText').textContent = 'Simulation Complete!';
+                return;
+            }
+
+            const step = steps[currentStepIndex];
+            stepCount++;
+            document.getElementById('stepCount').textContent = stepCount;
+            document.getElementById('statusText').textContent = step.msg;
+
+            const foundSoFar = steps.slice(0, currentStepIndex + 1).filter(s => s.type === 'solution').length;
+            document.getElementById('solutionsFoundCount').textContent = `${foundSoFar} / ${solutions.length}`;
+
+            renderLiveBoard(step.board, step.row, step.col);
+            currentStepIndex++;
+
+            if (currentStepIndex >= steps.length) {
+                pauseSimulation();
+                document.getElementById('statusText').textContent = 'All Branches Explored!';
+            }
+        }
+
+        function startSimulation() {
+            if (isRunning) return;
+            if (currentStepIndex >= steps.length) {
+                resetSolver();
+            }
+            isRunning = true;
+            document.getElementById('btn-start').classList.add('hidden');
+            document.getElementById('btn-pause').classList.remove('hidden');
+
+            const speed = parseInt(document.getElementById('speedSelect').value, 10);
+            timer = setInterval(() => {
+                if (currentStepIndex >= steps.length) {
+                    pauseSimulation();
+                    return;
+                }
+                stepForward();
+            }, speed);
+        }
+
+        function pauseSimulation() {
+            isRunning = false;
+            if (timer) clearInterval(timer);
+            document.getElementById('btn-start').classList.remove('hidden');
+            document.getElementById('btn-pause').classList.add('hidden');
+        }
+
+        function loadGallery(sizeStr) {
+            const size = parseInt(sizeStr, 10);
+            const container = document.getElementById('galleryContainer');
+            const summary = document.getElementById('gallerySummary');
+            container.innerHTML = '';
+
+            const sols = solveNQueensSilent(size);
+            summary.textContent = `Showing all ${sols.length} distinct valid solutions for N = ${size}`;
+
+            sols.forEach((solRows, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-[#0f172a] border border-slate-800/80 rounded-2xl p-4 flex flex-col items-center shadow-xl hover:border-amber-500/50 transition-all group';
+
+                const title = document.createElement('div');
+                title.className = 'text-xs font-bold text-amber-400 mb-3 flex items-center gap-1.5';
+                title.innerHTML = `<i class="fa-solid fa-crown text-[10px]"></i> Solution #${idx + 1}`;
+                card.appendChild(title);
+
+                const cellSize = size <= 6 ? '28px' : size <= 8 ? '22px' : '18px';
+                const fontSize = size <= 6 ? '16px' : size <= 8 ? '13px' : '10px';
+
+                const grid = document.createElement('div');
+                grid.className = 'grid rounded-xl overflow-hidden border border-slate-700/80 shadow-inner group-hover:scale-[1.02] transition-transform';
+                grid.style.gridTemplateColumns = `repeat(${size}, ${cellSize})`;
+                grid.style.gridTemplateRows = `repeat(${size}, ${cellSize})`;
+
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        const cell = document.createElement('div');
+                        const isLight = (r + c) % 2 === 0;
+                        cell.className = `flex items-center justify-center ${
+                            isLight ? 'bg-[#1e293b]' : 'bg-[#0b0f19]'
+                        }`;
+
+                        if (solRows[r][c] === 'Q') {
+                            const q = document.createElement('span');
+                            q.className = 'text-amber-400 drop-shadow';
+                            q.style.fontSize = fontSize;
+                            q.innerHTML = '<i class="fa-solid fa-chess-queen"></i>';
+                            cell.appendChild(q);
+                        }
+                        grid.appendChild(cell);
+                    }
+                }
+                card.appendChild(grid);
+                container.appendChild(card);
+            });
+        }
+
+        window.onload = function() {
+            resetSolver();
+        };
+    </script>
+
+</body>
+
+</html>
