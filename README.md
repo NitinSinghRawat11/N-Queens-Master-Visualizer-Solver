@@ -22,8 +22,10 @@ function backtrack(row) {
         if (cols.has(col) || diag1.has(row - col) || diag2.has(row + col)) continue;
         // Place and recurse...
     }
-}
+} 
+
 Project Structure
+
 ├── index.html        # Complete self-contained web app (UI, CSS, and JS engine)
 └── README.md         # Project overview and instructions
 
